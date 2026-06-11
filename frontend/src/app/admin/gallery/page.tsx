@@ -58,6 +58,10 @@ export default function GalleryListPage() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
 
+  // Cleanup state
+  const [isCleaningUp, setIsCleaningUp] = useState(false);
+  const [showCleanupConfirm, setShowCleanupConfirm] = useState(false);
+
   // Drag and drop sensors
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -224,6 +228,41 @@ export default function GalleryListPage() {
     setIsDragging(false);
   };
 
+  // Cleanup orphaned images handler
+  const handleCleanupOrphaned = async () => {
+    try {
+      setIsCleaningUp(true);
+      setShowCleanupConfirm(false);
+
+      const response = await galleryService.cleanupOrphanedImages();
+
+      if (response.success && response.data) {
+        const { deletedCount, cloudinaryDeletedCount } = response.data;
+        
+        // Show success message
+        alert(`✅ Nettoyage terminé!\n\n${deletedCount} image(s) orpheline(s) supprimée(s)\n${cloudinaryDeletedCount} fichier(s) Cloudinary supprimé(s)`);
+        
+        // Refresh the gallery
+        setCurrentPage(1);
+        const params: Record<string, string> = {
+          page: '1',
+          limit: itemsPerPage.toString(),
+        };
+        const refreshResponse = await galleryService.getImages(params);
+        if (refreshResponse.success && refreshResponse.data) {
+          setImages(refreshResponse.data);
+          setTotalPages(refreshResponse.pagination?.pages || 1);
+          setTotalImages(refreshResponse.pagination?.total || 0);
+        }
+      }
+    } catch (error) {
+      console.error('Error cleaning up orphaned images:', error);
+      alert('❌ Erreur lors du nettoyage des images orphelines');
+    } finally {
+      setIsCleaningUp(false);
+    }
+  };
+
   // Get active image for drag overlay
   const activeImage = activeId ? images.find((img) => img._id === activeId) : null;
 
@@ -274,10 +313,35 @@ export default function GalleryListPage() {
               </p>
             </motion.div>
 
-            <Link
-              href="/admin/gallery/upload"
-              className="inline-flex items-center px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors shadow-sm"
-            >
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={() => setShowCleanupConfirm(true)}
+                disabled={isCleaningUp}
+                className="inline-flex items-center px-4 py-2 bg-neutral-100 text-neutral-700 rounded-lg hover:bg-neutral-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Supprimer les images qui n'appartiennent à aucun produit"
+              >
+                {isCleaningUp ? (
+                  <>
+                    <svg className="animate-spin h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Nettoyage...
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    Nettoyer
+                  </>
+                )}
+              </button>
+
+              <Link
+                href="/admin/gallery/upload"
+                className="inline-flex items-center px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors shadow-sm"
+              >
               <svg
                 className="w-5 h-5 mr-2"
                 fill="none"
@@ -293,9 +357,54 @@ export default function GalleryListPage() {
               </svg>
               Télécharger des images
             </Link>
+            </div>
           </div>
         </div>
       </div>
+
+      {/* Cleanup Confirmation Modal */}
+      {showCleanupConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6"
+          >
+            <div className="flex items-center space-x-3 mb-4">
+              <div className="flex-shrink-0 w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center">
+                <svg className="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-neutral-900">
+                  Nettoyer les images orphelines
+                </h3>
+              </div>
+            </div>
+
+            <p className="text-neutral-600 mb-6">
+              Cette action va supprimer toutes les images de la galerie qui n'appartiennent à aucun produit existant. 
+              Les fichiers seront également supprimés de Cloudinary. Cette action est irréversible.
+            </p>
+
+            <div className="flex space-x-3">
+              <button
+                onClick={() => setShowCleanupConfirm(false)}
+                className="flex-1 px-4 py-2 border border-neutral-300 text-neutral-700 rounded-lg hover:bg-neutral-50 transition-colors"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={handleCleanupOrphaned}
+                className="flex-1 px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors"
+              >
+                Nettoyer maintenant
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
 
       {/* Filters and Search */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">

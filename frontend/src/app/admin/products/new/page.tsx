@@ -9,7 +9,6 @@ import { useProductForm, useProductTags, useProductMaterials, useProductFinishes
 import { productsService, galleryService, categoryService } from '@/lib/api';
 import { Breadcrumb, ProductImageManager, ProductVideoManager } from '@/components/admin';
 import type { ProductImage, ProductVideo } from '@/components/admin';
-import { PRODUCT_CATEGORIES } from '@/lib/validations/product';
 import type { ProductFormData } from '@/lib/validations/product';
 import { LoadingSpinner, LoadingButton } from '@/components/ui';
 
@@ -72,7 +71,6 @@ export default function NewProductPage() {
   const slugValue = watch('slug') || '';
   const shortDescriptionValue = watch('shortDescription') || '';
   const descriptionValue = watch('description') || '';
-  const subcategoryValue = watch('subcategory') || '';
   const specifications = watch('specifications') || {};
   const seoTitleValue = watch('seoTitle') || '';
   const seoDescriptionValue = watch('seoDescription') || '';
@@ -95,7 +93,7 @@ export default function NewProductPage() {
   const fetchCategories = async () => {
     try {
       setLoadingCategories(true);
-      const response = await categoryService.getAll({ isActive: 'true', limit: 100 });
+      const response = await categoryService.getAll({ limit: 100 });
       if (response.success && response.data) {
         setCategories(response.data);
       }
@@ -277,9 +275,7 @@ export default function NewProductPage() {
         payload.slug = data.slug.trim();
       }
       
-      if (data.subcategory?.trim()) {
-        payload.subcategory = data.subcategory.trim();
-      }
+      // Subcategory removed from form; not included in payload
       
       // CRITICAL: Only add images if we have valid uploaded images with URLs
       if (uploadedImages.length > 0) {
@@ -549,20 +545,12 @@ export default function NewProductPage() {
                     <option value="">Sélectionner une catégorie</option>
                     {loadingCategories ? (
                       <option disabled>Chargement des catégories...</option>
-                    ) : categories.length > 0 ? (
+                    ) : (
                       categories.map((category) => (
                         <option key={category._id} value={category.slug}>
                           {category.name}
                         </option>
                       ))
-                    ) : (
-                      <>
-                        {PRODUCT_CATEGORIES.map((category) => (
-                          <option key={category} value={category}>
-                            {category.charAt(0).toUpperCase() + category.slice(1)}
-                          </option>
-                        ))}
-                      </>
                     )}
                   </select>
                   {errors.category && (
@@ -575,29 +563,7 @@ export default function NewProductPage() {
                   )}
                 </div>
 
-                {/* Subcategory */}
-                <div>
-                  <label htmlFor="subcategory" className="block text-sm font-medium text-neutral-700 mb-2">
-                    Sous-catégorie
-                  </label>
-                  <input
-                    type="text"
-                    id="subcategory"
-                    {...register('subcategory')}
-                    placeholder="Ex: Cuisine contemporaine"
-                    className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors ${
-                      errors.subcategory ? 'border-red-500' : 'border-neutral-300'
-                    }`}
-                  />
-                  <div className="flex items-center justify-between mt-1">
-                    {errors.subcategory && (
-                      <p className="text-sm text-red-600">{errors.subcategory.message}</p>
-                    )}
-                    <p className="text-xs text-neutral-500 ml-auto">
-                      {subcategoryValue.length}/100 caractères
-                    </p>
-                  </div>
-                </div>
+                {/* Subcategory removed */}
               </div>
             </div>
           </motion.div>

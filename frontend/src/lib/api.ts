@@ -106,6 +106,7 @@ class ApiClient {
 
     const config: RequestInit = {
       credentials: 'include', // Important pour envoyer/recevoir les cookies
+      cache: 'no-store', // Disable Next.js and browser caching
       headers: {
         'Content-Type': 'application/json',
         ...(this.token && { Authorization: `Bearer ${this.token}` }),
@@ -279,6 +280,7 @@ export const galleryService = {
     apiClient.post('/admin/gallery/bulk', data),
   updateSortOrder: (imageOrders: Array<{ id: string; sortOrder: number }>) =>
     apiClient.put('/admin/gallery/sort-order', { imageOrders }),
+  cleanupOrphanedImages: () => apiClient.post('/admin/gallery/cleanup-orphaned', {}),
 };
 
 export const messagesService = {

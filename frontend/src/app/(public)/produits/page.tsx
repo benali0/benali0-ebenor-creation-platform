@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { Navigation } from '@/components/public/Navigation';
 import { Footer } from '@/components/public/Footer';
 import ProductGrid from '@/components/public/ProductGrid';
+import ProductTable from '@/components/public/ProductTable';
 import Pagination from '@/components/ui/Pagination';
 import { SkeletonGrid } from '@/components/ui/LoadingSkeleton';
 import { getProducts, Product, ProductFilters, getCategoryLabel, getCategories } from '@/lib/api/products';
@@ -352,7 +353,7 @@ export default function ProduitsPage() {
           {loading ? (
             <SkeletonGrid count={12} type="product" columns={3} />
           ) : (
-            <ProductGrid products={products} loading={false} />
+            <ProductTable products={products} />
           )}
 
           {/* Pagination */}

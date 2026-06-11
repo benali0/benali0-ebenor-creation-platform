@@ -553,7 +553,8 @@ export class ProductController {
         );
       }
 
-      const product = await Product.findByIdAndDelete(id);
+      // Find the product first to get its images
+      const product = await Product.findById(id);
 
       if (!product) {
         throw new ApiError(
@@ -563,16 +564,77 @@ export class ProductController {
         );
       }
 
+      // Extract all image URLs from the product
+      const imageUrls = product.images?.map((img: { url: string }) => img.url) || [];
+
+      // Delete the product
+      await Product.findByIdAndDelete(id);
+
+      // Delete associated gallery images that match the product's image URLs
+      let deletedGalleryImagesCount = 0;
+      if (imageUrls.length > 0) {
+        const { GalleryImage } = await import('../models/GalleryImage');
+        const { cloudinaryService } = await import('../services/cloudinaryService');
+        
+        // Find gallery images to delete
+        const galleryImages = await GalleryImage.find({
+          url: { $in: imageUrls }
+        });
+
+        // Delete from database
+        const deleteResult = await GalleryImage.deleteMany({
+          url: { $in: imageUrls }
+        });
+        deletedGalleryImagesCount = deleteResult.deletedCount || 0;
+
+        // Delete from Cloudinary if available
+        for (const galleryImage of galleryImages) {
+          try {
+            // Extract public_id from URL
+            const urlMatch = galleryImage.url.match(/\/([^/]+)\.(jpg|jpeg|png|webp|mp4|mov)$/i);
+            if (urlMatch && urlMatch[1]) {
+              const publicId = `ebenor-creation/products/${urlMatch[1]}`;
+              await cloudinaryService.deleteFile(publicId, 'image');
+              logger.info('Deleted image from Cloudinary', {
+                publicId,
+                url: galleryImage.url
+              });
+            }
+          } catch (cloudError) {
+            logger.warn('Failed to delete image from Cloudinary', {
+              url: galleryImage.url,
+              error: cloudError
+            });
+            // Continue even if Cloudinary deletion fails
+          }
+        }
+
+        if (deletedGalleryImagesCount > 0) {
+          logger.info('Deleted associated gallery images', {
+            productId: id,
+            productName: product.name,
+            imagesDeleted: deletedGalleryImagesCount,
+            urls: imageUrls,
+          });
+        }
+      }
+
       logger.info('Product deleted', {
         productId: id,
         name: product.name,
         deletedBy: req.user?.email || req.user?.id,
+        imagesCount: imageUrls.length,
+        galleryImagesDeleted: deletedGalleryImagesCount,
       });
 
       const response: ApiResponse = {
         success: true,
-        data: { id },
-        message: 'Produit supprimé avec succès',
+        data: { 
+          id,
+          deletedImagesCount: imageUrls.length,
+          deletedGalleryImagesCount
+        },
+        message: `Produit supprimé avec succès${deletedGalleryImagesCount > 0 ? ` (${deletedGalleryImagesCount} image(s) de galerie supprimée(s))` : ''}`,
       };
 
       res.status(200).json(response);
@@ -607,12 +669,59 @@ export class ProductController {
       }
 
       let result;
+      let deletedImagesCount = 0;
 
       switch (operation) {
         case 'delete':
+          // Find products first to get their image URLs
+          const productsToDelete = await Product.find({ _id: { $in: validIds } });
+          const allImageUrls: string[] = [];
+          
+          productsToDelete.forEach(product => {
+            if (product.images && product.images.length > 0) {
+              product.images.forEach((img: { url: string }) => allImageUrls.push(img.url));
+            }
+          });
+
+          // Delete the products
           result = await Product.deleteMany({ _id: { $in: validIds } });
+          
+          // Delete associated gallery images
+          if (allImageUrls.length > 0) {
+            const { GalleryImage } = await import('../models/GalleryImage');
+            const { cloudinaryService } = await import('../services/cloudinaryService');
+            
+            // Find gallery images to delete
+            const galleryImages = await GalleryImage.find({
+              url: { $in: allImageUrls }
+            });
+
+            // Delete from database
+            const deleteImagesResult = await GalleryImage.deleteMany({
+              url: { $in: allImageUrls }
+            });
+            deletedImagesCount = deleteImagesResult.deletedCount || 0;
+
+            // Delete from Cloudinary
+            for (const galleryImage of galleryImages) {
+              try {
+                const urlMatch = galleryImage.url.match(/\/([^/]+)\.(jpg|jpeg|png|webp|mp4|mov)$/i);
+                if (urlMatch && urlMatch[1]) {
+                  const publicId = `ebenor-creation/products/${urlMatch[1]}`;
+                  await cloudinaryService.deleteFile(publicId, 'image');
+                }
+              } catch (cloudError) {
+                logger.warn('Failed to delete image from Cloudinary during bulk delete', {
+                  url: galleryImage.url,
+                  error: cloudError
+                });
+              }
+            }
+          }
+
           logger.info('Bulk delete products', {
-            count: result.deletedCount,
+            productsDeleted: result.deletedCount,
+            imagesDeleted: deletedImagesCount,
             deletedBy: req.user?.email || req.user?.id,
           });
           break;
@@ -666,10 +775,16 @@ export class ProductController {
           );
       }
 
+      const responseData = operation === 'delete' 
+        ? { ...result, deletedImagesCount }
+        : result;
+
       const response: ApiResponse = {
         success: true,
-        data: result,
-        message: `Opération "${operation}" effectuée avec succès sur ${validIds.length} produit(s)`,
+        data: responseData,
+        message: operation === 'delete'
+          ? `${validIds.length} produit(s) et ${deletedImagesCount} image(s) supprimé(s) avec succès`
+          : `Opération "${operation}" effectuée avec succès sur ${validIds.length} produit(s)`,
       };
 
       res.status(200).json(response);

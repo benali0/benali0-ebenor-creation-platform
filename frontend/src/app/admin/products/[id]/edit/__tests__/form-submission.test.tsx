@@ -24,6 +24,16 @@ jest.mock('@/lib/api', () => ({
 
 jest.mock('@/components/admin', () => ({
   Breadcrumb: () => <div>Breadcrumb</div>,
+  ProductImageManager: ({ images, onChange }: any) => (
+    <div>
+      <div>ProductImageManager</div>
+      {/* expose a simple input to simulate adding an image in tests if needed */}
+      <input
+        aria-label="mock-image-input"
+        onChange={(e: any) => onChange([{ url: 'http://example.com/img.jpg', alt: 'img', isPrimary: true }])}
+      />
+    </div>
+  ),
 }));
 
 jest.mock('framer-motion', () => ({

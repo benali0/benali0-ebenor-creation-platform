@@ -730,6 +730,100 @@ export class GalleryController {
       next(error);
     }
   }
+
+  /**
+   * Cleanup orphaned gallery images (Admin only)
+   * Removes gallery images that don't belong to any existing product
+   */
+  public async cleanupOrphanedImages(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { Product } = await import('../models/Product');
+      const { cloudinaryService } = await import('../services/cloudinaryService');
+
+      // Get all products and their image URLs
+      const products = await Product.find({}).lean();
+      const productImageUrls = new Set<string>();
+      
+      products.forEach(product => {
+        if (product.images && Array.isArray(product.images)) {
+          product.images.forEach((img: any) => {
+            if (img.url) {
+              productImageUrls.add(img.url);
+            }
+          });
+        }
+      });
+
+      // Get all gallery images
+      const galleryImages = await GalleryImage.find({}).lean();
+
+      // Find orphaned images (gallery images not referenced by any product)
+      const orphanedImages = galleryImages.filter(img => !productImageUrls.has(img.url));
+
+      if (orphanedImages.length === 0) {
+        const response: ApiResponse = {
+          success: true,
+          data: {
+            orphanedCount: 0,
+            deletedCount: 0,
+            cloudinaryDeletedCount: 0,
+          },
+          message: 'Aucune image orpheline trouvée. La galerie est propre!',
+        };
+        return res.status(200).json(response);
+      }
+
+      // Delete orphaned images from database
+      const orphanedUrls = orphanedImages.map(img => img.url);
+      const deleteResult = await GalleryImage.deleteMany({
+        url: { $in: orphanedUrls }
+      });
+
+      // Delete from Cloudinary
+      let cloudinaryDeletedCount = 0;
+      for (const img of orphanedImages) {
+        try {
+          const urlMatch = img.url.match(/\/([^/]+)\.(jpg|jpeg|png|webp|mp4|mov)$/i);
+          if (urlMatch && urlMatch[1]) {
+            const publicId = `ebenor-creation/products/${urlMatch[1]}`;
+            await cloudinaryService.deleteFile(publicId, 'image');
+            cloudinaryDeletedCount++;
+          }
+        } catch (error) {
+          logger.warn('Failed to delete orphaned image from Cloudinary', {
+            url: img.url,
+            error
+          });
+        }
+      }
+
+      logger.info('Cleanup orphaned gallery images', {
+        orphanedCount: orphanedImages.length,
+        deletedFromDB: deleteResult.deletedCount,
+        deletedFromCloudinary: cloudinaryDeletedCount,
+        cleanedBy: req.user?.email || req.user?.id,
+      });
+
+      const response: ApiResponse = {
+        success: true,
+        data: {
+          orphanedCount: orphanedImages.length,
+          deletedCount: deleteResult.deletedCount,
+          cloudinaryDeletedCount,
+          orphanedImages: orphanedImages.map(img => ({
+            title: img.title,
+            url: img.url,
+            category: img.category,
+          })),
+        },
+        message: `${deleteResult.deletedCount} image(s) orpheline(s) supprimée(s) avec succès!`,
+      };
+
+      res.status(200).json(response);
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 // Instance du contrôleur de galerie

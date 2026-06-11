@@ -20,9 +20,6 @@ export function Breadcrumb() {
       '/admin/products': 'Produits',
       '/admin/products/new': 'Nouveau produit',
       '/admin/products/edit': 'Modifier le produit',
-      '/admin/gallery': 'Galerie',
-      '/admin/gallery/upload': 'Télécharger des images',
-      '/admin/gallery/edit': 'Modifier l\'image',
       '/admin/messages': 'Messages',
       '/admin/content': 'Contenu',
       '/admin/homepage': 'Page d\'accueil',
@@ -33,6 +30,7 @@ export function Breadcrumb() {
       '/admin/homepage/testimonials': 'Section Témoignages',
       '/admin/homepage/contact': 'Section Contact',
       '/admin/media': 'Bibliothèque média',
+      '/admin/categories': 'Catégories',
     };
 
     // Split pathname into segments

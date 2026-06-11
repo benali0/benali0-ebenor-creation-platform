@@ -9,7 +9,6 @@ import { useProductForm, useProductTags, useProductMaterials, useProductFinishes
 import { productsService, galleryService, categoryService } from '@/lib/api';
 import { Breadcrumb, ProductImageManager } from '@/components/admin';
 import type { ProductImage } from '@/components/admin';
-import { PRODUCT_CATEGORIES } from '@/lib/validations/product';
 import type { ProductFormData } from '@/lib/validations/product';
 
 interface Category {
@@ -72,7 +71,6 @@ export default function EditProductPage() {
   const slugValue = watch('slug') || '';
   const shortDescriptionValue = watch('shortDescription') || '';
   const descriptionValue = watch('description') || '';
-  const subcategoryValue = watch('subcategory') || '';
   const specifications = watch('specifications') || {};
   const seoTitleValue = watch('seoTitle') || '';
   const seoDescriptionValue = watch('seoDescription') || '';
@@ -95,7 +93,7 @@ export default function EditProductPage() {
   const fetchCategories = async () => {
     try {
       setLoadingCategories(true);
-      const response = await categoryService.getAll({ isActive: 'true', limit: 100 });
+      const response = await categoryService.getAll({ limit: 100 });
       if (response.success && response.data) {
         setCategories(response.data);
       }
@@ -126,7 +124,6 @@ export default function EditProductPage() {
           setValue('name', product.name || '');
           setValue('slug', product.slug || '');
           setValue('category', product.category || 'mobilier');
-          setValue('subcategory', product.subcategory || '');
           setValue('shortDescription', product.shortDescription || '');
           setValue('description', product.description || '');
           setValue('images', product.images || []);
@@ -348,7 +345,6 @@ export default function EditProductPage() {
       // STEP 2: Prepare data for API with proper handling of optional fields
       
       // Convert empty strings to undefined for optional string fields
-      const subcategory = data.subcategory?.trim() || undefined;
       const seoTitle = data.seoTitle?.trim() || undefined;
       const seoDescription = data.seoDescription?.trim() || undefined;
       
@@ -383,18 +379,24 @@ export default function EditProductPage() {
         featured: data.featured || false,
       };
       
-      // Only add optional fields if they have valid values
+      // Normalize optional collections and include them (use defaults when empty)
+      const normalizedSpecifications = data.specifications || {};
+      const normalizedMaterials = data.materials || [];
+      const normalizedFinishes = data.finishes || [];
+      const normalizedTags = data.tags || [];
+
       if (data.slug?.trim()) payload.slug = data.slug.trim();
-      if (subcategory) payload.subcategory = subcategory;
-      if (uploadedImages.length > 0) payload.images = uploadedImages;
-      if (Object.keys(data.specifications || {}).length > 0) payload.specifications = data.specifications;
+      // Always include images array (may be empty)
+      payload.images = uploadedImages;
+      // Always include normalized collections (may be empty)
+      payload.specifications = normalizedSpecifications;
       if (dimensions) payload.dimensions = dimensions;
-      if (data.materials && data.materials.length > 0) payload.materials = data.materials;
-      if (data.finishes && data.finishes.length > 0) payload.finishes = data.finishes;
+      payload.materials = normalizedMaterials;
+      payload.finishes = normalizedFinishes;
       if (price) payload.price = price;
       if (seoTitle) payload.seoTitle = seoTitle;
       if (seoDescription) payload.seoDescription = seoDescription;
-      if (data.tags && data.tags.length > 0) payload.tags = data.tags;
+      payload.tags = normalizedTags;
 
       const response = await productsService.update(productId, payload);
 
@@ -402,8 +404,8 @@ export default function EditProductPage() {
         // Show success message
         alert('Produit mis à jour avec succès !');
         
-        // Redirect to products list
-        router.push('/admin/products');
+        // Redirect to products list with refresh parameter
+        router.push(`/admin/products?success=updated&name=${encodeURIComponent(data.name)}&refresh=${Date.now()}`);
       } else {
         throw new Error(response.message || 'Erreur lors de la mise à jour du produit');
       }
@@ -666,20 +668,12 @@ export default function EditProductPage() {
                     <option value="">Sélectionner une catégorie</option>
                     {loadingCategories ? (
                       <option disabled>Chargement des catégories...</option>
-                    ) : categories.length > 0 ? (
+                    ) : (
                       categories.map((category) => (
                         <option key={category._id} value={category.slug}>
                           {category.name}
                         </option>
                       ))
-                    ) : (
-                      <>
-                        {PRODUCT_CATEGORIES.map((category) => (
-                          <option key={category} value={category}>
-                            {category.charAt(0).toUpperCase() + category.slice(1)}
-                          </option>
-                        ))}
-                      </>
                     )}
                   </select>
                   {errors.category && (
@@ -692,29 +686,7 @@ export default function EditProductPage() {
                   )}
                 </div>
 
-                {/* Subcategory */}
-                <div>
-                  <label htmlFor="subcategory" className="block text-sm font-medium text-neutral-700 mb-2">
-                    Sous-catégorie
-                  </label>
-                  <input
-                    type="text"
-                    id="subcategory"
-                    {...register('subcategory')}
-                    placeholder="Ex: Cuisine contemporaine"
-                    className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors ${
-                      errors.subcategory ? 'border-red-500' : 'border-neutral-300'
-                    }`}
-                  />
-                  <div className="flex items-center justify-between mt-1">
-                    {errors.subcategory && (
-                      <p className="text-sm text-red-600">{errors.subcategory.message}</p>
-                    )}
-                    <p className="text-xs text-neutral-500 ml-auto">
-                      {subcategoryValue.length}/100 caractères
-                    </p>
-                  </div>
-                </div>
+                {/* Subcategory removed */}
               </div>
             </div>
           </motion.div>

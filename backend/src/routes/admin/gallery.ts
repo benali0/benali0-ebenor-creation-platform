@@ -34,6 +34,9 @@ const upload = multer({
 // Toutes les routes admin nécessitent une authentification
 router.use(authenticate);
 
+// Cleanup orphaned images
+router.post('/cleanup-orphaned', galleryController.cleanupOrphanedImages.bind(galleryController));
+
 // Upload image
 router.post('/upload', uploadLimiter, upload.any(), galleryController.uploadImage.bind(galleryController));
 
