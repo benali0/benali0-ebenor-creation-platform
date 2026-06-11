@@ -1,7 +1,7 @@
 import { Router } from 'express';
-import { mediaLibraryController } from '@/controllers/mediaLibraryController';
-import { authenticate } from '@/middleware/auth';
-import { uploadLimiter } from '@/middleware/security';
+import { mediaLibraryController } from '../../controllers/mediaLibraryController';
+import { authenticate } from '../../middleware/auth';
+import { uploadLimiter } from '../../middleware/security';
 import multer from 'multer';
 
 const router = Router();

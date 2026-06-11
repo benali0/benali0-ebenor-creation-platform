@@ -1,44 +1,11 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { useState, useEffect } from "react";
 import Image from "next/image";
-
-interface Upload {
-  id: string;
-  name: string;
-  type: "product" | "gallery";
-  category?: string;
-  imageUrl?: string;
-  createdAt: string;
-}
+import { useRecentUploads } from "@/hooks/useAnalytics";
 
 export function RecentUploads() {
-  const [uploads, setUploads] = useState<Upload[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const itemsPerPage = 5;
-
-  useEffect(() => {
-    const fetchUploads = async () => {
-      setLoading(true);
-      try {
-        const response = await fetch(`/api/admin/recent-uploads?page=${page}&limit=${itemsPerPage}`);
-        if (response.ok) {
-          const data = await response.json();
-          setUploads(data.data || []);
-          setTotalPages(data.pagination?.pages || 1);
-        }
-      } catch (error) {
-        console.error("Failed to fetch uploads:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchUploads();
-  }, [page]);
+  const { uploads, loading } = useRecentUploads();
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -88,7 +55,7 @@ export function RecentUploads() {
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="bg-white rounded-xl shadow-sm border border-neutral-200 p-6">
       <div className="flex items-center justify-between mb-6">
         <h3 className="text-lg font-semibold text-neutral-900">Ajouts Récents</h3>
-        <span className="text-sm text-neutral-500">Page {page} sur {totalPages}</span>
+        <span className="text-sm text-neutral-500">{uploads.length} élément{uploads.length > 1 ? 's' : ''}</span>
       </div>
 
       {loading ? (
@@ -111,58 +78,34 @@ export function RecentUploads() {
           <p>Aucun ajout récent</p>
         </div>
       ) : (
-        <>
-          <div className="space-y-3">
-            {uploads.map((upload, index) => (
-              <motion.div key={upload.id} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: index * 0.05 }} className="flex items-center space-x-4 p-3 rounded-lg hover:bg-neutral-50 transition-colors">
-                <div className="flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden bg-neutral-100 relative">
-                  {upload.imageUrl ? (
-                    <Image src={upload.imageUrl} alt={upload.name} fill className="object-cover" sizes="48px" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-neutral-400">{getTypeIcon(upload.type)}</div>
-                  )}
-                </div>
-
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center space-x-2 mb-1">
-                    {getTypeBadge(upload.type)}
-                    {upload.category && <span className="text-xs text-neutral-500">{upload.category}</span>}
-                  </div>
-                  <p className="text-sm font-medium text-neutral-900 truncate">{upload.name}</p>
-                  <p className="text-xs text-neutral-500">{formatDate(upload.createdAt)}</p>
-                </div>
-
-                <div className="flex-shrink-0">
-                  <svg className="w-5 h-5 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-
-          {totalPages > 1 && (
-            <div className="mt-6 pt-6 border-t border-neutral-200 flex items-center justify-between">
-              <button onClick={() => setPage((prev) => Math.max(1, prev - 1))} disabled={page === 1} className="flex items-center space-x-2 px-4 py-2 rounded-lg bg-neutral-100 text-neutral-700 hover:bg-neutral-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
-                <span>Précédent</span>
-              </button>
-
-              <div className="flex items-center space-x-1">
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-                  <button key={p} onClick={() => setPage(p)} className={`w-10 h-10 rounded-lg transition-colors ${page === p ? 'bg-amber-600 text-white' : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'}`}>
-                    {p}
-                  </button>
-                ))}
+        <div className="space-y-3">
+          {uploads.map((upload, index) => (
+            <motion.div key={upload.id} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: index * 0.05 }} className="flex items-center space-x-4 p-3 rounded-lg hover:bg-neutral-50 transition-colors">
+              <div className="flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden bg-neutral-100 relative">
+                {upload.imageUrl ? (
+                  <Image src={upload.imageUrl} alt={upload.name} fill className="object-cover" sizes="48px" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-neutral-400">{getTypeIcon(upload.type)}</div>
+                )}
               </div>
 
-              <button onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))} disabled={page === totalPages} className="flex items-center space-x-2 px-4 py-2 rounded-lg bg-neutral-100 text-neutral-700 hover:bg-neutral-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
-                <span>Suivant</span>
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-              </button>
-            </div>
-          )}
-        </>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center space-x-2 mb-1">
+                  {getTypeBadge(upload.type)}
+                  {upload.category && <span className="text-xs text-neutral-500">{upload.category}</span>}
+                </div>
+                <p className="text-sm font-medium text-neutral-900 truncate">{upload.name}</p>
+                <p className="text-xs text-neutral-500">{formatDate(upload.createdAt)}</p>
+              </div>
+
+              <div className="flex-shrink-0">
+                <svg className="w-5 h-5 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </div>
+            </motion.div>
+          ))}
+        </div>
       )}
     </motion.div>
   );

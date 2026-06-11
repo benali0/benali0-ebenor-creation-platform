@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import crypto from 'crypto';
 import { ApiError, ERROR_CODES } from './errorHandler';
-import { AuthenticatedRequest } from '@/types';
+import { AuthenticatedRequest } from '../types';
 
 /**
  * Configuration CSRF

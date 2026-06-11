@@ -1,8 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
-import { Message } from '@/models/Message';
-import { ApiError, ERROR_CODES } from '@/middleware/errorHandler';
-import { ApiResponse, PaginatedResponse } from '@/types';
-import { logger } from '@/utils/logger';
+import { Message } from '../models/Message';
+import { ApiError, ERROR_CODES } from '../middleware/errorHandler';
+import { ApiResponse, PaginatedResponse } from '../types';
+import { logger } from '../utils/logger';
 
 export class MessageController {
   /**

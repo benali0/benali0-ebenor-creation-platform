@@ -6,17 +6,17 @@ import compression from 'compression';
 import rateLimit from 'express-rate-limit';
 import cookieParser from 'cookie-parser';
 import mongoose from 'mongoose';
-import { config } from '@/config/database';
-import { logger } from '@/utils/logger';
-import { errorHandler, notFound } from '@/middleware/errorHandler';
+import { config } from './config/database';
+import { logger } from './utils/logger';
+import { errorHandler, notFound } from './middleware/errorHandler';
 import { 
   requestLogger, 
   sanitizeInput, 
   validateHeaders, 
   validatePayloadSize,
   timingAttackProtection 
-} from '@/middleware/security';
-import { setCsrfToken, conditionalCsrfValidation } from '@/middleware/csrf';
+} from './middleware/security';
+import { setCsrfToken, conditionalCsrfValidation } from './middleware/csrf';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -124,11 +124,11 @@ app.get('/health', (req, res) => {
 });
 
 // Route pour obtenir un token CSRF
-import { getCsrfToken } from '@/middleware/csrf';
+import { getCsrfToken } from './middleware/csrf';
 app.get('/api/csrf-token', getCsrfToken);
 
 // Routes API - PAS de validation CSRF globale
-import apiRoutes from '@/routes';
+import apiRoutes from './routes';
 // Désactiver les ETags pour les routes admin pour éviter le cache 304
 app.set('etag', false);
 app.use('/api', apiRoutes);

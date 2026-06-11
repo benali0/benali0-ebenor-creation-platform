@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { validateCsrfToken } from '@/middleware/csrf';
+import { validateCsrfToken } from '../../middleware/csrf';
 import productRoutes from './products';
 import galleryRoutes from './gallery';
 import homeRoutes from './home';

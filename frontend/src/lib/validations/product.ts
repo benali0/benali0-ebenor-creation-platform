@@ -156,9 +156,7 @@ export const productFormSchema = z.object({
     )
     .trim(),
 
-  category: z.enum(PRODUCT_CATEGORIES, {
-    errorMap: () => ({ message: 'Catégorie invalide' }),
-  }),
+  category: z.string().min(1, 'La catégorie est requise'),
 
   subcategory: z
     .string()

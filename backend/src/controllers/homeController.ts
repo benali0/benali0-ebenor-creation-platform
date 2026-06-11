@@ -1,9 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
-import { HomeContent } from '@/models/HomeContent';
-import { ApiError, ERROR_CODES } from '@/middleware/errorHandler';
-import { ApiResponse } from '@/types';
-import { logger } from '@/utils/logger';
-import { MockDataService } from '@/services/mockDataService';
+import { HomeContent } from '../models/HomeContent';
+import { ApiError, ERROR_CODES } from '../middleware/errorHandler';
+import { ApiResponse } from '../types';
+import { logger } from '../utils/logger';
+import { MockDataService } from '../services/mockDataService';
 
 export class HomeController {
   /**

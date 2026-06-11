@@ -1,141 +1,102 @@
 import { Request, Response, NextFunction } from 'express';
-import { Product } from '@/models/Product';
-import { ApiError, ERROR_CODES } from '@/middleware/errorHandler';
-import { ApiResponse, PaginatedResponse } from '@/types';
-import { logger } from '@/utils/logger';
-import { MockDataService } from '@/services/mockDataService';
-import { cacheService } from '@/services/cacheService';
-import { fileUploadService } from '@/services/fileUploadService';
-import { mediaLibraryService } from '@/services/mediaLibraryService';
-import { measureQueryPerformance } from '@/middleware/queryPerformance';
+import { Product } from '../models/Product';
+import { Category } from '../models/Category';
+import { ApiError, ERROR_CODES } from '../middleware/errorHandler';
+import { ApiResponse } from '../types';
+import { logger } from '../utils/logger';
+import mongoose from 'mongoose';
 
 export class ProductController {
   /**
    * Obtenir tous les produits avec pagination et filtres
-   * Optimized with caching and lean queries
    */
   public async getProducts(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      let products, total;
-      
-      try {
-        const page = parseInt(req.query.page as string) || 1;
-        const limit = parseInt(req.query.limit as string) || 12;
-        const skip = (page - 1) * limit;
+      const {
+        page = 1,
+        limit = 12,
+        category,
+        subcategory,
+        availability,
+        featured,
+        search,
+        sort = '-createdAt',
+        minPrice,
+        maxPrice,
+        materials,
+        tags,
+      } = req.query;
 
-        // Construire les filtres
-        const filters: any = {};
-        
-        if (req.query.category) {
-          filters.category = req.query.category;
-        }
-        
-        if (req.query.subcategory) {
-          filters.subcategory = req.query.subcategory;
-        }
-        
-        if (req.query.featured !== undefined) {
-          filters.featured = req.query.featured === 'true';
-        }
-        
-        if (req.query.availability) {
-          filters.availability = req.query.availability;
-        }
+      // Construire le filtre
+      const filter: any = {};
 
-        // Filtres de prix
-        if (req.query.minPrice || req.query.maxPrice) {
-          filters['price.amount'] = {};
-          if (req.query.minPrice) {
-            filters['price.amount'].$gte = parseFloat(req.query.minPrice as string);
-          }
-          if (req.query.maxPrice) {
-            filters['price.amount'].$lte = parseFloat(req.query.maxPrice as string);
-          }
-        }
-
-        // Recherche textuelle
-        if (req.query.search) {
-          filters.$text = { $search: req.query.search };
-        }
-
-        // Tri
-        let sort: any = { createdAt: -1 }; // Par défaut, plus récents en premier
-        
-        if (req.query.sort) {
-          const sortField = req.query.sort as string;
-          if (sortField.startsWith('-')) {
-            sort = { [sortField.substring(1)]: -1 };
-          } else {
-            sort = { [sortField]: 1 };
-          }
-        }
-
-        // Create cache key from filters
-        const cacheKey = cacheService.getProductsList(JSON.stringify({ filters, sort, page, limit }));
-        
-        // Try to get from cache
-        const cached = cacheService.getProductsList(JSON.stringify({ filters, sort, page, limit }));
-        if (cached) {
-          logger.debug('Products list served from cache');
-          return res.status(200).json(cached);
-        }
-
-        // Exécuter la requête avec pagination - optimized with lean()
-        [products, total] = await measureQueryPerformance(async () => {
-          return Promise.all([
-            Product.find(filters)
-              .select('-__v -createdBy -updatedBy') // Limit fields
-              .sort(sort)
-              .skip(skip)
-              .limit(limit)
-              .lean(), // Use lean for better performance
-            Product.countDocuments(filters)
-          ]);
-        }, 'getProducts');
-
-      } catch (dbError) {
-        // Si MongoDB n'est pas disponible, utiliser les données de test
-        logger.warn('MongoDB non disponible, utilisation des données de test pour les produits', { error: dbError });
-        const mockProducts = MockDataService.getProducts();
-        
-        // Appliquer les filtres basiques sur les données de test
-        let filteredProducts = mockProducts;
-        
-        if (req.query.category) {
-          filteredProducts = filteredProducts.filter(p => p.category === req.query.category);
-        }
-        
-        if (req.query.featured !== undefined) {
-          const featured = req.query.featured === 'true';
-          filteredProducts = filteredProducts.filter(p => p.featured === featured);
-        }
-        
-        products = filteredProducts;
-        total = filteredProducts.length;
+      if (category) {
+        filter.category = category;
       }
 
-      const page = parseInt(req.query.page as string) || 1;
-      const limit = parseInt(req.query.limit as string) || 12;
-      const totalPages = Math.ceil(total / limit);
+      if (subcategory) {
+        filter.subcategory = subcategory;
+      }
 
-      const response: PaginatedResponse<typeof products[0]> = {
+      if (availability) {
+        filter.availability = availability;
+      }
+
+      if (featured !== undefined) {
+        filter.featured = featured === 'true';
+      }
+
+      // Filtre de prix
+      if (minPrice || maxPrice) {
+        filter['price.amount'] = {};
+        if (minPrice) filter['price.amount'].$gte = Number(minPrice);
+        if (maxPrice) filter['price.amount'].$lte = Number(maxPrice);
+      }
+
+      // Filtre de matériaux
+      if (materials) {
+        const materialsArray = (materials as string).split(',');
+        filter.materials = { $in: materialsArray };
+      }
+
+      // Filtre de tags
+      if (tags) {
+        const tagsArray = (tags as string).split(',');
+        filter.tags = { $in: tagsArray };
+      }
+
+      // Recherche textuelle
+      if (search) {
+        filter.$text = { $search: search as string };
+      }
+
+      const pageNum = Math.max(1, Number(page));
+      const limitNum = Math.min(100, Math.max(1, Number(limit)));
+      const skip = (pageNum - 1) * limitNum;
+
+      // Exécuter la requête avec pagination
+      const [products, total] = await Promise.all([
+        Product.find(filter)
+          .sort(sort as string)
+          .skip(skip)
+          .limit(limitNum)
+          .lean(),
+        Product.countDocuments(filter),
+      ]);
+
+      const totalPages = Math.ceil(total / limitNum);
+
+      const response: ApiResponse = {
         success: true,
         data: products,
         pagination: {
-          page,
-          limit,
+          page: pageNum,
+          limit: limitNum,
           total,
           pages: totalPages,
+          hasMore: pageNum < totalPages,
         },
       };
-
-      // Cache the response
-      cacheService.setProductsList(JSON.stringify({ 
-        filters: req.query, 
-        sort: req.query.sort, 
-        page, 
-        limit 
-      }), response);
 
       res.status(200).json(response);
     } catch (error) {
@@ -145,23 +106,12 @@ export class ProductController {
 
   /**
    * Obtenir un produit par son slug
-   * Optimized with caching
    */
   public async getProductBySlug(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { slug } = req.params;
 
-      // Try to get from cache
-      const cached = cacheService.getProductBySlug(slug);
-      if (cached) {
-        logger.debug('Product served from cache', { slug });
-        return res.status(200).json({ success: true, data: cached });
-      }
-
-      const product = await measureQueryPerformance(
-        () => Product.findOne({ slug }).select('-__v').lean(),
-        'getProductBySlug'
-      );
+      const product = await Product.findOne({ slug }).lean();
 
       if (!product) {
         throw new ApiError(
@@ -170,9 +120,6 @@ export class ProductController {
           ERROR_CODES.NOT_FOUND
         );
       }
-
-      // Cache the product
-      cacheService.setProductBySlug(slug, product);
 
       const response: ApiResponse = {
         success: true,
@@ -187,23 +134,20 @@ export class ProductController {
 
   /**
    * Obtenir un produit par son ID
-   * Optimized with caching
    */
   public async getProductById(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { id } = req.params;
 
-      // Try to get from cache
-      const cached = cacheService.getProductById(id);
-      if (cached) {
-        logger.debug('Product served from cache', { id });
-        return res.status(200).json({ success: true, data: cached });
+      if (!mongoose.Types.ObjectId.isValid(id)) {
+        throw new ApiError(
+          'ID de produit invalide',
+          400,
+          ERROR_CODES.VALIDATION_ERROR
+        );
       }
 
-      const product = await measureQueryPerformance(
-        () => Product.findById(id).select('-__v').lean(),
-        'getProductById'
-      );
+      const product = await Product.findById(id).lean();
 
       if (!product) {
         throw new ApiError(
@@ -212,9 +156,6 @@ export class ProductController {
           ERROR_CODES.NOT_FOUND
         );
       }
-
-      // Cache the product
-      cacheService.setProductById(id, product);
 
       const response: ApiResponse = {
         success: true,
@@ -229,41 +170,16 @@ export class ProductController {
 
   /**
    * Obtenir les produits en vedette
-   * Optimized with caching
    */
   public async getFeaturedProducts(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      let products;
-      
-      try {
-        const limit = parseInt(req.query.limit as string) || 6;
+      const { limit = 6 } = req.query;
+      const limitNum = Math.min(20, Math.max(1, Number(limit)));
 
-        // Try to get from cache
-        const cached = cacheService.getFeaturedProducts(limit);
-        if (cached) {
-          logger.debug('Featured products served from cache', { limit });
-          return res.status(200).json({ success: true, data: cached });
-        }
-
-        products = await measureQueryPerformance(
-          () => Product.find({ featured: true })
-            .select('-__v -createdBy -updatedBy')
-            .sort({ createdAt: -1 })
-            .limit(limit)
-            .lean(),
-          'getFeaturedProducts'
-        );
-
-        // Cache the featured products
-        cacheService.setFeaturedProducts(limit, products);
-
-      } catch (dbError) {
-        // Si MongoDB n'est pas disponible, utiliser les données de test
-        logger.warn('MongoDB non disponible, utilisation des données de test pour les produits en vedette', { error: dbError });
-        const mockProducts = MockDataService.getProducts();
-        const limit = parseInt(req.query.limit as string) || 6;
-        products = mockProducts.filter(p => p.featured).slice(0, limit);
-      }
+      const products = await Product.find({ featured: true })
+        .sort('-createdAt')
+        .limit(limitNum)
+        .lean();
 
       const response: ApiResponse = {
         success: true,
@@ -281,28 +197,29 @@ export class ProductController {
    */
   public async getCategories(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const categories = await Product.aggregate([
-        {
-          $group: {
-            _id: '$category',
-            count: { $sum: 1 },
-            subcategories: { $addToSet: '$subcategory' }
-          }
-        },
-        {
-          $project: {
-            category: '$_id',
-            count: 1,
-            subcategories: {
-              $filter: {
-                input: '$subcategories',
-                cond: { $ne: ['$$this', null] }
-              }
-            }
-          }
-        },
-        { $sort: { category: 1 } }
-      ]);
+      // Obtenir les catégories depuis la collection Category
+      const categories = await Category.find({ isActive: true })
+        .sort('name')
+        .lean();
+
+      // Si aucune catégorie n'existe, utiliser les catégories distinctes des produits
+      if (categories.length === 0) {
+        const distinctCategories = await Product.distinct('category');
+        
+        const categoriesData = distinctCategories.map(cat => ({
+          name: cat,
+          slug: cat.toLowerCase().replace(/\s+/g, '-'),
+          isActive: true,
+        }));
+
+        const response: ApiResponse = {
+          success: true,
+          data: categoriesData,
+        };
+
+        res.status(200).json(response);
+        return;
+      }
 
       const response: ApiResponse = {
         success: true,
@@ -320,45 +237,44 @@ export class ProductController {
    */
   public async searchProducts(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { q } = req.query;
-      
-      if (!q || typeof q !== 'string' || q.trim().length < 2) {
+      const { q, page = 1, limit = 12 } = req.query;
+
+      if (!q || typeof q !== 'string' || q.trim().length === 0) {
         throw new ApiError(
-          'Terme de recherche requis (minimum 2 caractères)',
+          'Requête de recherche requise',
           400,
           ERROR_CODES.VALIDATION_ERROR
         );
       }
 
-      const searchTerm = q.trim();
-      const page = parseInt(req.query.page as string) || 1;
-      const limit = parseInt(req.query.limit as string) || 12;
-      const skip = (page - 1) * limit;
+      const pageNum = Math.max(1, Number(page));
+      const limitNum = Math.min(100, Math.max(1, Number(limit)));
+      const skip = (pageNum - 1) * limitNum;
 
-      // Recherche avec score de pertinence
-      const products = await Product.find(
-        { $text: { $search: searchTerm } },
-        { score: { $meta: 'textScore' } }
-      )
-        .sort({ score: { $meta: 'textScore' }, createdAt: -1 })
-        .skip(skip)
-        .limit(limit)
-        .lean();
+      // Recherche textuelle avec score
+      const [products, total] = await Promise.all([
+        Product.find(
+          { $text: { $search: q as string } },
+          { score: { $meta: 'textScore' } }
+        )
+          .sort({ score: { $meta: 'textScore' } })
+          .skip(skip)
+          .limit(limitNum)
+          .lean(),
+        Product.countDocuments({ $text: { $search: q as string } }),
+      ]);
 
-      const total = await Product.countDocuments({
-        $text: { $search: searchTerm }
-      });
+      const totalPages = Math.ceil(total / limitNum);
 
-      const totalPages = Math.ceil(total / limit);
-
-      const response: PaginatedResponse<typeof products[0]> = {
+      const response: ApiResponse = {
         success: true,
         data: products,
         pagination: {
-          page,
-          limit,
+          page: pageNum,
+          limit: limitNum,
           total,
           pages: totalPages,
+          hasMore: pageNum < totalPages,
         },
       };
 
@@ -374,11 +290,18 @@ export class ProductController {
   public async getSimilarProducts(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { id } = req.params;
-      const limit = parseInt(req.query.limit as string) || 4;
+      const { limit = 4 } = req.query;
 
-      // Récupérer le produit de référence
+      if (!mongoose.Types.ObjectId.isValid(id)) {
+        throw new ApiError(
+          'ID de produit invalide',
+          400,
+          ERROR_CODES.VALIDATION_ERROR
+        );
+      }
+
       const product = await Product.findById(id);
-      
+
       if (!product) {
         throw new ApiError(
           'Produit non trouvé',
@@ -387,16 +310,18 @@ export class ProductController {
         );
       }
 
+      const limitNum = Math.min(20, Math.max(1, Number(limit)));
+
       // Trouver des produits similaires basés sur la catégorie et les tags
       const similarProducts = await Product.find({
         _id: { $ne: id },
         $or: [
           { category: product.category },
-          { tags: { $in: product.tags } }
-        ]
+          { tags: { $in: product.tags } },
+        ],
       })
-        .sort({ featured: -1, createdAt: -1 })
-        .limit(limit)
+        .sort('-featured -createdAt')
+        .limit(limitNum)
         .lean();
 
       const response: ApiResponse = {
@@ -415,43 +340,92 @@ export class ProductController {
    */
   public async getProductStats(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const stats = await Product.aggregate([
+      const [
+        totalProducts,
+        featuredCount,
+        categoryStats,
+        priceStats,
+      ] = await Promise.all([
+        Product.countDocuments(),
+        Product.countDocuments({ featured: true }),
+        Product.aggregate([
+          {
+            $group: {
+              _id: null,
+              categoriesCount: { $addToSet: '$category' },
+            },
+          },
+        ]),
+        Product.aggregate([
+          {
+            $group: {
+              _id: null,
+              avgPrice: { $avg: '$price' },
+              minPrice: { $min: '$price' },
+              maxPrice: { $max: '$price' },
+            },
+          },
+        ]),
+      ]);
+
+      const categoriesCount = categoryStats[0]?.categoriesCount?.length || 0;
+      const priceData = priceStats[0] || { avgPrice: 0, minPrice: 0, maxPrice: 0 };
+
+      const stats = {
+        totalProducts: totalProducts,
+        featuredProducts: featuredCount,
+        categoriesCount: categoriesCount,
+        avgPrice: Math.round(priceData.avgPrice || 0),
+        minPrice: Math.round(priceData.minPrice || 0),
+        maxPrice: Math.round(priceData.maxPrice || 0),
+      };
+
+      const response: ApiResponse = {
+        success: true,
+        data: stats,
+      };
+
+      res.status(200).json(response);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Obtenir la répartition des produits par catégorie
+   */
+  public async getProductCategoriesBreakdown(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const categoryBreakdown = await Product.aggregate([
         {
           $group: {
-            _id: null,
-            totalProducts: { $sum: 1 },
-            featuredProducts: {
-              $sum: { $cond: [{ $eq: ['$featured', true] }, 1, 0] }
-            },
-            categoriesCount: { $addToSet: '$category' },
-            avgPrice: { $avg: '$price.amount' },
-            minPrice: { $min: '$price.amount' },
-            maxPrice: { $max: '$price.amount' }
-          }
+            _id: '$category',
+            count: { $sum: 1 },
+            subcategories: { $addToSet: '$subcategory' },
+          },
         },
         {
           $project: {
             _id: 0,
-            totalProducts: 1,
-            featuredProducts: 1,
-            categoriesCount: { $size: '$categoriesCount' },
-            avgPrice: { $round: ['$avgPrice', 2] },
-            minPrice: 1,
-            maxPrice: 1
-          }
-        }
+            category: '$_id',
+            count: 1,
+            subcategories: {
+              $filter: {
+                input: '$subcategories',
+                as: 'sub',
+                cond: { $ne: ['$$sub', null] },
+              },
+            },
+          },
+        },
+        {
+          $sort: { count: -1 },
+        },
       ]);
 
       const response: ApiResponse = {
         success: true,
-        data: stats[0] || {
-          totalProducts: 0,
-          featuredProducts: 0,
-          categoriesCount: 0,
-          avgPrice: 0,
-          minPrice: 0,
-          maxPrice: 0
-        },
+        data: categoryBreakdown,
       };
 
       res.status(200).json(response);
@@ -464,52 +438,71 @@ export class ProductController {
 
   /**
    * Créer un nouveau produit (Admin only)
-   * Invalidates cache after creation
    */
   public async createProduct(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const productData: any = req.body;
+      const productData = req.body;
 
-      const authenticatedReq = req as any;
-      if (authenticatedReq.user) {
-        productData.createdBy = authenticatedReq.user.id;
-        productData.updatedBy = authenticatedReq.user.id;
+      // Ajouter l'utilisateur qui crée le produit
+      if (req.user) {
+        productData.createdBy = req.user.email || req.user.id;
       }
 
       const product = new Product(productData);
       await product.save();
 
-      const savedProduct = await Product.findById(product._id);
-      if (!savedProduct) {
-        throw new Error('Product was not saved to database');
-      }
-
-      cacheService.invalidateProducts();
-      logger.info('Product created', { productId: product._id, name: product.name });
+      logger.info('Product created', {
+        productId: product._id,
+        name: product.name,
+        createdBy: productData.createdBy,
+      });
 
       const response: ApiResponse = {
         success: true,
-        data: product.toPublicJSON(),
+        data: product,
         message: 'Produit créé avec succès',
       };
 
       res.status(201).json(response);
     } catch (error: any) {
-      logger.error('Error creating product:', error.message);
-      next(error);
+      if (error.code === 11000) {
+        next(new ApiError(
+          'Un produit avec ce slug existe déjà',
+          409,
+          ERROR_CODES.DUPLICATE_ENTRY
+        ));
+      } else {
+        next(error);
+      }
     }
   }
 
   /**
    * Mettre à jour un produit (Admin only)
-   * Invalidates cache after update
    */
   public async updateProduct(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { id } = req.params;
-      const updateData: any = req.body;
+      const updateData = req.body;
 
-      const product = await Product.findById(id);
+      if (!mongoose.Types.ObjectId.isValid(id)) {
+        throw new ApiError(
+          'ID de produit invalide',
+          400,
+          ERROR_CODES.VALIDATION_ERROR
+        );
+      }
+
+      // Ajouter l'utilisateur qui modifie le produit
+      if (req.user) {
+        updateData.updatedBy = req.user.email || req.user.id;
+      }
+
+      const product = await Product.findByIdAndUpdate(
+        id,
+        updateData,
+        { new: true, runValidators: true }
+      );
 
       if (!product) {
         throw new ApiError(
@@ -519,44 +512,48 @@ export class ProductController {
         );
       }
 
-      const oldSlug = product.slug;
-
-      // Add user who updated
-      const authenticatedReq = req as any;
-      if (authenticatedReq.user) {
-        updateData.updatedBy = authenticatedReq.user.id;
-      }
-
-      // Mettre à jour les champs
-      Object.assign(product, updateData);
-      await product.save();
-
-      // Invalidate specific product cache and lists
-      cacheService.invalidateProduct(id, oldSlug);
-
-      logger.info('Product updated', { productId: product._id, name: product.name });
+      logger.info('Product updated', {
+        productId: product._id,
+        name: product.name,
+        updatedBy: updateData.updatedBy,
+      });
 
       const response: ApiResponse = {
         success: true,
-        data: product.toPublicJSON(),
+        data: product,
         message: 'Produit mis à jour avec succès',
       };
 
       res.status(200).json(response);
-    } catch (error) {
-      next(error);
+    } catch (error: any) {
+      if (error.code === 11000) {
+        next(new ApiError(
+          'Un produit avec ce slug existe déjà',
+          409,
+          ERROR_CODES.DUPLICATE_ENTRY
+        ));
+      } else {
+        next(error);
+      }
     }
   }
 
   /**
    * Supprimer un produit (Admin only)
-   * Invalidates cache after deletion
    */
   public async deleteProduct(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { id } = req.params;
 
-      const product = await Product.findById(id);
+      if (!mongoose.Types.ObjectId.isValid(id)) {
+        throw new ApiError(
+          'ID de produit invalide',
+          400,
+          ERROR_CODES.VALIDATION_ERROR
+        );
+      }
+
+      const product = await Product.findByIdAndDelete(id);
 
       if (!product) {
         throw new ApiError(
@@ -566,55 +563,15 @@ export class ProductController {
         );
       }
 
-      // Attempt to delete associated media files (images/videos) if they are not referenced elsewhere
-      try {
-        const mediaUrls: string[] = [];
-
-        if (product.images && Array.isArray(product.images)) {
-          for (const img of product.images) {
-            if (img && img.url) mediaUrls.push(img.url);
-          }
-        }
-
-        // If product has a video field (legacy/support), include it
-        // @ts-ignore - some products may include video info in payload
-        if ((product as any).video && (product as any).video.url) {
-          mediaUrls.push((product as any).video.url);
-        }
-
-        for (const url of mediaUrls) {
-          try {
-            const refs = await mediaLibraryService.findMediaReferences(url);
-
-            // If only referenced by this product, it's safe to delete the underlying file
-            const onlyProductRef = refs.length === 1 && refs[0].type === 'product' && refs[0].id === id;
-
-            if (refs.length === 0 || onlyProductRef) {
-              // Use fileUploadService.deleteFile which handles UploadThing or Cloudinary
-              await fileUploadService.deleteFile(url, (url.toLowerCase().endsWith('.mp4') || url.toLowerCase().endsWith('.webm')) ? 'video' : 'image');
-              logger.info('Associated media deleted with product', { productId: id, url });
-            } else {
-              logger.info('Skipping media deletion because it is referenced elsewhere', { productId: id, url, references: refs.map(r => `${r.type}:${r.id}`) });
-            }
-          } catch (mediaErr) {
-            // Log and continue deletion of product - don't block product removal on media errors
-            logger.warn('Failed to delete associated media for product - continuing', { productId: id, url, error: (mediaErr as Error).message });
-          }
-        }
-      } catch (err) {
-        logger.warn('Error while attempting to delete associated media for product', { productId: id, error: (err as Error).message });
-      }
-
-      // Delete the product document
-      await Product.findByIdAndDelete(id);
-
-      // Invalidate product caches
-      cacheService.invalidateProduct(id, product.slug);
-
-      logger.info('Product deleted', { productId: id, name: product.name });
+      logger.info('Product deleted', {
+        productId: id,
+        name: product.name,
+        deletedBy: req.user?.email || req.user?.id,
+      });
 
       const response: ApiResponse = {
         success: true,
+        data: { id },
         message: 'Produit supprimé avec succès',
       };
 
@@ -625,16 +582,25 @@ export class ProductController {
   }
 
   /**
-   * Opérations en masse sur les produits (Admin only)
-   * Invalidates cache after bulk operations
+   * Opérations en masse (Admin only)
    */
   public async bulkOperations(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { action, productIds, data } = req.body;
+      const { operation, ids, data } = req.body;
 
-      if (!action || !productIds || !Array.isArray(productIds) || productIds.length === 0) {
+      if (!operation || !ids || !Array.isArray(ids) || ids.length === 0) {
         throw new ApiError(
-          'Action et IDs de produits requis',
+          'Opération et IDs requis',
+          400,
+          ERROR_CODES.VALIDATION_ERROR
+        );
+      }
+
+      // Valider tous les IDs
+      const validIds = ids.filter(id => mongoose.Types.ObjectId.isValid(id));
+      if (validIds.length !== ids.length) {
+        throw new ApiError(
+          'Un ou plusieurs IDs sont invalides',
           400,
           ERROR_CODES.VALIDATION_ERROR
         );
@@ -642,58 +608,68 @@ export class ProductController {
 
       let result;
 
-      switch (action) {
+      switch (operation) {
         case 'delete':
-          result = await Product.deleteMany({ _id: { $in: productIds } });
-          logger.info('Bulk delete products', { count: result.deletedCount });
+          result = await Product.deleteMany({ _id: { $in: validIds } });
+          logger.info('Bulk delete products', {
+            count: result.deletedCount,
+            deletedBy: req.user?.email || req.user?.id,
+          });
           break;
 
-        case 'feature':
-          result = await Product.updateMany(
-            { _id: { $in: productIds } },
-            { $set: { featured: true } }
-          );
-          logger.info('Bulk feature products', { count: result.modifiedCount });
-          break;
-
-        case 'unfeature':
-          result = await Product.updateMany(
-            { _id: { $in: productIds } },
-            { $set: { featured: false } }
-          );
-          logger.info('Bulk unfeature products', { count: result.modifiedCount });
-          break;
-
-        case 'changeCategory':
-          if (!data || !data.category) {
+        case 'update':
+          if (!data) {
             throw new ApiError(
-              'Catégorie requise pour cette action',
+              'Données de mise à jour requises',
               400,
               ERROR_CODES.VALIDATION_ERROR
             );
           }
+          const updateData = { ...data };
+          if (req.user) {
+            updateData.updatedBy = req.user.email || req.user.id;
+          }
           result = await Product.updateMany(
-            { _id: { $in: productIds } },
-            { $set: { category: data.category, subcategory: data.subcategory || null } }
+            { _id: { $in: validIds } },
+            { $set: updateData }
           );
-          logger.info('Bulk change category', { count: result.modifiedCount, category: data.category });
+          logger.info('Bulk update products', {
+            count: result.modifiedCount,
+            updatedBy: req.user?.email || req.user?.id,
+          });
+          break;
+
+        case 'toggleFeatured':
+          // Toggle featured status
+          const products = await Product.find({ _id: { $in: validIds } });
+          await Promise.all(
+            products.map(async (product) => {
+              product.featured = !product.featured;
+              if (req.user) {
+                product.updatedBy = req.user.email || req.user.id;
+              }
+              return product.save();
+            })
+          );
+          result = { modifiedCount: products.length };
+          logger.info('Bulk toggle featured products', {
+            count: products.length,
+            updatedBy: req.user?.email || req.user?.id,
+          });
           break;
 
         default:
           throw new ApiError(
-            'Action non reconnue',
+            'Opération invalide',
             400,
             ERROR_CODES.VALIDATION_ERROR
           );
       }
 
-      // Invalidate all product caches after bulk operations
-      cacheService.invalidateProducts();
-
       const response: ApiResponse = {
         success: true,
         data: result,
-        message: `Opération "${action}" effectuée avec succès`,
+        message: `Opération "${operation}" effectuée avec succès sur ${validIds.length} produit(s)`,
       };
 
       res.status(200).json(response);

@@ -1,5 +1,5 @@
 import mongoose, { Schema, Document } from 'mongoose';
-import { Product as IProduct } from '@/types';
+import { Product as IProduct } from '../types';
 
 export interface ProductDocument extends IProduct, Document {}
 
@@ -30,7 +30,6 @@ const ProductSchema = new Schema<ProductDocument>({
   category: { 
     type: String, 
     required: true,
-    enum: ['cuisine', 'dressing', 'mobilier', 'amenagement', 'autre'],
     lowercase: true
   },
   subcategory: { 

@@ -1,12 +1,12 @@
 import { Router } from 'express';
-import { messageController } from '@/controllers/messageController';
+import { messageController } from '../../controllers/messageController';
 import { 
   validateObjectIdParam,
   validatePagination,
   validateMessageFilters,
   validatePriority,
   validateNote
-} from '@/middleware/validation';
+} from '../../middleware/validation';
 
 const router = Router();
 

@@ -2,8 +2,12 @@ import { Router } from 'express';
 import authRoutes from './auth';
 import publicRoutes from './public';
 import adminRoutes from './admin';
+import healthRoutes from './health';
 
 const router = Router();
+
+// Health check route
+router.use('/health', healthRoutes);
 
 // Routes d'authentification
 router.use('/auth', authRoutes);

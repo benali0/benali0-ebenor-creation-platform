@@ -1,12 +1,12 @@
 import { Router } from 'express';
-import { authController } from '@/controllers/authController';
-import { authenticate, requireActiveAccount } from '@/middleware/auth';
-import { authLimiter } from '@/middleware/security';
-import { getCsrfToken } from '@/middleware/csrf';
+import { authController } from '../controllers/authController';
+import { authenticate, requireActiveAccount } from '../middleware/auth';
+import { authLimiter } from '../middleware/security';
+import { getCsrfToken } from '../middleware/csrf';
 import { 
   validateLogin,
   handleValidationErrors 
-} from '@/middleware/validation';
+} from '../middleware/validation';
 import { body } from 'express-validator';
 
 const router = Router();

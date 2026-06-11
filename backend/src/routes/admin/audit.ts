@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { authenticate, authorize } from '@/middleware/auth';
+import { authenticate, authorize } from '../../middleware/auth';
 import {
   getAuditLogs,
   getAuditLogById,
@@ -8,7 +8,7 @@ import {
   getRecentAuditLogs,
   getDestructiveOperations,
   getAuditStatistics
-} from '@/controllers/auditController';
+} from '../../controllers/auditController';
 
 const router = Router();
 

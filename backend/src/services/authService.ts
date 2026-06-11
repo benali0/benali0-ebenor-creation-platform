@@ -1,9 +1,9 @@
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
-import { AdminUser, AdminUserDocument } from '@/models/AdminUser';
-import { ApiError, ERROR_CODES } from '@/middleware/errorHandler';
-import { JWTPayload } from '@/types';
-import { logger } from '@/utils/logger';
+import { AdminUser, AdminUserDocument } from '../models/AdminUser';
+import { ApiError, ERROR_CODES } from '../middleware/errorHandler';
+import { JWTPayload } from '../types';
+import { logger } from '../utils/logger';
 
 export class AuthService {
   private readonly jwtSecret: string;

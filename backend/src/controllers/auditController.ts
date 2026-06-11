@@ -1,7 +1,7 @@
 import { Response, NextFunction } from 'express';
-import { AuthenticatedRequest } from '@/types';
-import { auditService } from '@/services/auditService';
-import { ApiError } from '@/middleware/errorHandler';
+import { AuthenticatedRequest } from '../types';
+import { auditService } from '../services/auditService';
+import { ApiError } from '../middleware/errorHandler';
 
 /**
  * Get audit logs with filters and pagination

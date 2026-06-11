@@ -59,7 +59,13 @@ export function DeleteConfirmModalItem({ isOpen, image, onConfirm, onCancel, isD
                 <div className="relative w-20 h-20 rounded-lg overflow-hidden bg-neutral-100 flex-shrink-0 ring-2 ring-neutral-200">
                   {image.thumbnailUrl || image.url ? (
                     // Use next/image if remote host allowed
-                    <Image src={image.thumbnailUrl || image.url} alt={image.alt || image.title} fill className="object-cover" />
+                    <Image 
+                      src={image.thumbnailUrl || image.url} 
+                      alt={image.alt || image.title} 
+                      fill 
+                      sizes="80px"
+                      className="object-cover" 
+                    />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
                       <svg className="w-10 h-10 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">

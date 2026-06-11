@@ -1,16 +1,16 @@
 import { Router } from 'express';
-import { homeController } from '@/controllers/homeController';
-import { productController } from '@/controllers/productController';
-import { galleryController } from '@/controllers/galleryController';
-import { messageController } from '@/controllers/messageController';
-import { contactLimiter } from '@/middleware/security';
+import { homeController } from '../controllers/homeController';
+import { productController } from '../controllers/productController';
+import { galleryController } from '../controllers/galleryController';
+import { messageController } from '../controllers/messageController';
+import { contactLimiter } from '../middleware/security';
 import { 
   validateMessage,
   validatePagination,
   validateProductFilters,
   validateObjectIdParam
-} from '@/middleware/validation';
-import { CacheStrategies } from '@/middleware/caching';
+} from '../middleware/validation';
+import { CacheStrategies } from '../middleware/caching';
 
 const router = Router();
 
@@ -45,6 +45,13 @@ router.get('/products', CacheStrategies.short(), validatePagination, validatePro
  * @access  Public
  */
 router.get('/products/featured', CacheStrategies.medium(), productController.getFeaturedProducts);
+
+/**
+ * @route   GET /api/products/categories/breakdown
+ * @desc    Obtenir la répartition des produits par catégorie
+ * @access  Public
+ */
+router.get('/products/categories/breakdown', CacheStrategies.short(), productController.getProductCategoriesBreakdown);
 
 /**
  * @route   GET /api/products/categories

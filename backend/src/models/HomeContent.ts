@@ -1,5 +1,5 @@
 import mongoose, { Schema, Document } from 'mongoose';
-import { HomeContent as IHomeContent } from '@/types';
+import { HomeContent as IHomeContent } from '../types';
 
 export interface HomeContentDocument extends IHomeContent, Document {}
 

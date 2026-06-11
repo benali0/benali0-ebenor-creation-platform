@@ -1,9 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
-import { GalleryImage } from '@/models/GalleryImage';
-import { ApiError, ERROR_CODES } from '@/middleware/errorHandler';
-import { ApiResponse, PaginatedResponse } from '@/types';
-import { logger } from '@/utils/logger';
-import { MockDataService } from '@/services/mockDataService';
+import { GalleryImage } from '../models/GalleryImage';
+import { ApiError, ERROR_CODES } from '../middleware/errorHandler';
+import { ApiResponse, PaginatedResponse } from '../types';
+import { logger } from '../utils/logger';
+import { MockDataService } from '../services/mockDataService';
 
 export class GalleryController {
   /**

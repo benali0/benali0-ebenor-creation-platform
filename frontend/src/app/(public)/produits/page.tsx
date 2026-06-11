@@ -7,7 +7,7 @@ import { Footer } from '@/components/public/Footer';
 import ProductGrid from '@/components/public/ProductGrid';
 import Pagination from '@/components/ui/Pagination';
 import { SkeletonGrid } from '@/components/ui/LoadingSkeleton';
-import { getProducts, Product, ProductFilters, getCategoryLabel } from '@/lib/api/products';
+import { getProducts, Product, ProductFilters, getCategoryLabel, getCategories } from '@/lib/api/products';
 
 /**
  * Product Catalog Page with SEO optimization
@@ -31,6 +31,23 @@ export default function ProduitsPage() {
     category: searchParams.get('category') || undefined,
     search: searchParams.get('search') || undefined,
   });
+
+  const [availableCategories, setAvailableCategories] = useState<Array<{ category: string; name?: string; count: number }>>([]);
+  
+  // Fetch available categories dynamically
+  useEffect(() => {
+    const loadCategories = async () => {
+      try {
+        const response = await getCategories();
+        if (response.success && response.data) {
+          setAvailableCategories(response.data);
+        }
+      } catch (err) {
+        console.error('Failed to load categories', err);
+      }
+    };
+    loadCategories();
+  }, []);
   
   const [sortBy, setSortBy] = useState(searchParams.get('sort') || 'newest');
   const [searchInput, setSearchInput] = useState(filters.search || '');
@@ -183,54 +200,21 @@ export default function ProduitsPage() {
               >
                 Tous
               </button>
-              <button
-                onClick={() => handleCategoryChange('cuisine')}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors focus-visible-enhanced ${
-                  filters.category === 'cuisine'
-                    ? 'bg-primary-600 text-white'
-                    : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
-                }`}
-                aria-pressed={filters.category === 'cuisine'}
-                aria-label={`Filtrer par ${getCategoryLabel('cuisine')}`}
-              >
-                {getCategoryLabel('cuisine')}
-              </button>
-              <button
-                onClick={() => handleCategoryChange('dressing')}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors focus-visible-enhanced ${
-                  filters.category === 'dressing'
-                    ? 'bg-primary-600 text-white'
-                    : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
-                }`}
-                aria-pressed={filters.category === 'dressing'}
-                aria-label={`Filtrer par ${getCategoryLabel('dressing')}`}
-              >
-                {getCategoryLabel('dressing')}
-              </button>
-              <button
-                onClick={() => handleCategoryChange('mobilier')}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors focus-visible-enhanced ${
-                  filters.category === 'mobilier'
-                    ? 'bg-primary-600 text-white'
-                    : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
-                }`}
-                aria-pressed={filters.category === 'mobilier'}
-                aria-label={`Filtrer par ${getCategoryLabel('mobilier')}`}
-              >
-                {getCategoryLabel('mobilier')}
-              </button>
-              <button
-                onClick={() => handleCategoryChange('amenagement')}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors focus-visible-enhanced ${
-                  filters.category === 'amenagement'
-                    ? 'bg-primary-600 text-white'
-                    : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
-                }`}
-                aria-pressed={filters.category === 'amenagement'}
-                aria-label={`Filtrer par ${getCategoryLabel('amenagement')}`}
-              >
-                {getCategoryLabel('amenagement')}
-              </button>
+              {availableCategories.map((cat) => (
+                <button
+                  key={cat.category}
+                  onClick={() => handleCategoryChange(cat.category)}
+                  className={`px-4 py-2 rounded-lg font-medium transition-colors focus-visible-enhanced ${
+                    filters.category === cat.category
+                      ? 'bg-primary-600 text-white'
+                      : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
+                  }`}
+                  aria-pressed={filters.category === cat.category}
+                  aria-label={`Filtrer par ${cat.name || getCategoryLabel(cat.category)}`}
+                >
+                  {cat.name || getCategoryLabel(cat.category)}
+                </button>
+              ))}
             </div>
 
             {/* Search and Sort */}

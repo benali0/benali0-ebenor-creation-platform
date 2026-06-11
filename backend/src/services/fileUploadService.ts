@@ -3,8 +3,8 @@ import path from 'path';
 import { Request } from 'express';
 import { uploadThingService } from './uploadThingService';
 import { cloudinaryService, CloudinaryUploadOptions } from './cloudinaryService';
-import { ApiError, ERROR_CODES } from '@/middleware/errorHandler';
-import { logger } from '@/utils/logger';
+import { ApiError, ERROR_CODES } from '../middleware/errorHandler';
+import { logger } from '../utils/logger';
 
 // Allowed file types
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];

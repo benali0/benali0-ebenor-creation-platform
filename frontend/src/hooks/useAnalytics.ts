@@ -215,7 +215,8 @@ export function useProductCategories() {
     const fetchCategories = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`${API_BASE_URL}/products/categories?_t=${Date.now()}`, {
+        console.log('🔄 Fetching product categories breakdown (refreshKey:', refreshKey, ')');
+        const response = await fetch(`${API_BASE_URL}/products/categories/breakdown?_t=${Date.now()}`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',

@@ -1,10 +1,10 @@
 import { Request, Response, NextFunction } from 'express';
-import { mediaLibraryService } from '@/services/mediaLibraryService';
-import { uploadThingService } from '@/services/uploadThingService';
-import { cloudinaryService } from '@/services/cloudinaryService';
-import { ApiError, ERROR_CODES } from '@/middleware/errorHandler';
-import { ApiResponse, PaginatedResponse } from '@/types';
-import { logger } from '@/utils/logger';
+import { mediaLibraryService } from '../services/mediaLibraryService';
+import { uploadThingService } from '../services/uploadThingService';
+import { cloudinaryService } from '../services/cloudinaryService';
+import { ApiError, ERROR_CODES } from '../middleware/errorHandler';
+import { ApiResponse, PaginatedResponse } from '../types';
+import { logger } from '../utils/logger';
 
 export class MediaLibraryController {
   /**

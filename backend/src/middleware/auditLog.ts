@@ -1,6 +1,6 @@
 import { Response, NextFunction } from 'express';
-import { AuthenticatedRequest } from '@/types';
-import { auditService } from '@/services/auditService';
+import { AuthenticatedRequest } from '../types';
+import { auditService } from '../services/auditService';
 
 /**
  * Extract IP address from request

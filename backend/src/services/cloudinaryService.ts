@@ -1,5 +1,5 @@
 import { v2 as cloudinary, UploadApiResponse, UploadApiErrorResponse } from 'cloudinary';
-import { logger } from '@/utils/logger';
+import { logger } from '../utils/logger';
 
 // Configuration Cloudinary
 cloudinary.config({

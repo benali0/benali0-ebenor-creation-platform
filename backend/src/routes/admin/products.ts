@@ -1,12 +1,12 @@
 import { Router } from 'express';
-import { productController } from '@/controllers/productController';
-import { authenticate } from '@/middleware/auth';
-import { uploadLimiter } from '@/middleware/security';
+import { productController } from '../../controllers/productController';
+import { authenticate } from '../../middleware/auth';
+import { uploadLimiter } from '../../middleware/security';
 import { 
   validateProduct, 
   validateObjectIdParam,
   validateBulkOperation
-} from '@/middleware/validation';
+} from '../../middleware/validation';
 
 const router = Router();
 

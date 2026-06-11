@@ -1,5 +1,5 @@
-import { AuditLog } from '@/models/AuditLog';
-import { logger } from '@/utils/logger';
+import { AuditLog } from '../models/AuditLog';
+import { logger } from '../utils/logger';
 
 export interface CreateAuditLogParams {
   userId: string;

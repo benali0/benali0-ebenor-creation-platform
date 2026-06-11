@@ -1,8 +1,8 @@
-import { Product } from '@/models/Product';
-import { GalleryImage } from '@/models/GalleryImage';
-import { HomeContent } from '@/models/HomeContent';
+import { Product } from '../models/Product';
+import { GalleryImage } from '../models/GalleryImage';
+import { HomeContent } from '../models/HomeContent';
 import { cloudinaryService } from './cloudinaryService';
-import { logger } from '@/utils/logger';
+import { logger } from '../utils/logger';
 
 export interface MediaItem {
   id: string;

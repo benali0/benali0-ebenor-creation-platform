@@ -115,16 +115,16 @@ describe('Product Validation Schema', () => {
       expect(result2.success).toBe(true);
     });
 
-    it('should require valid category', () => {
-      const invalid = { ...validProduct, category: 'invalid' as any };
+    it('should require valid category (non-empty string)', () => {
+      const invalid = { ...validProduct, category: '' };
       const result = productFormSchema.safeParse(invalid);
       expect(result.success).toBe(false);
     });
 
-    it('should accept valid categories', () => {
-      const categories = ['cuisine', 'dressing', 'mobilier', 'amenagement', 'autre'];
+    it('should accept any valid category name as a string', () => {
+      const categories = ['cuisine', 'dressing', 'mobilier', 'amenagement', 'autre', 'salon', 'chambre-a-coucher'];
       categories.forEach((category) => {
-        const product = { ...validProduct, category: category as any };
+        const product = { ...validProduct, category: category };
         const result = productFormSchema.safeParse(product);
         expect(result.success).toBe(true);
       });

@@ -41,6 +41,12 @@ export default function CategoriesPage() {
   const [deletingCategory, setDeletingCategory] = useState<Category | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCategories, setTotalCategories] = useState(0);
+  const itemsPerPage = 10;
+
   // Form state
   const [formData, setFormData] = useState({
     name: '',
@@ -60,14 +66,30 @@ export default function CategoriesPage() {
     if (isAuthenticated) {
       fetchCategories();
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, currentPage, searchQuery]);
 
   const fetchCategories = async () => {
     try {
       setLoading(true);
-      const response = await categoryService.getAll({ limit: 100 });
+      const params = new URLSearchParams({
+        page: currentPage.toString(),
+        limit: itemsPerPage.toString(),
+      });
+
+      if (searchQuery.trim()) {
+        params.append('search', searchQuery.trim());
+      }
+
+      const response = await categoryService.getAll(Object.fromEntries(params));
       if (response.success && response.data) {
         setCategories(response.data);
+        
+        // Update pagination info
+        if ('pagination' in response && response.pagination) {
+          const pagination = response.pagination as any;
+          setTotalPages(pagination.pages || 1);
+          setTotalCategories(pagination.total || 0);
+        }
       }
     } catch (error: any) {
       console.error('Error fetching categories:', error);
@@ -83,6 +105,7 @@ export default function CategoriesPage() {
       const response = await categoryService.initialize();
       if (response.success) {
         toast.success(response.message || 'Catégories initialisées avec succès');
+        setCurrentPage(1); // Reset to first page
         fetchCategories();
       }
     } catch (error: any) {
@@ -183,9 +206,7 @@ export default function CategoriesPage() {
     }
   };
 
-  const filteredCategories = categories.filter((cat) =>
-    cat.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredCategories = categories;
 
   if (authLoading || !isAuthenticated) {
     return (
@@ -238,7 +259,7 @@ export default function CategoriesPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-neutral-600">Total</p>
-                <p className="text-3xl font-bold text-neutral-900">{categories.length}</p>
+                <p className="text-3xl font-bold text-neutral-900">{totalCategories}</p>
               </div>
               <SwatchIcon className="h-12 w-12 text-amber-600 opacity-20" />
             </div>
@@ -276,7 +297,10 @@ export default function CategoriesPage() {
             <input
               type="text"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setCurrentPage(1); // Reset to first page on search
+              }}
               placeholder="Rechercher une catégorie..."
               className="w-full pl-12 pr-4 py-3 border border-neutral-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-white shadow-sm"
             />
@@ -400,6 +424,64 @@ export default function CategoriesPage() {
                 ))}
               </tbody>
             </table>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="px-6 py-4 border-t border-neutral-200 bg-neutral-50">
+                <div className="flex items-center justify-between">
+                  <div className="text-sm text-neutral-700">
+                    Page {currentPage} sur {totalPages} • {totalCategories} catégorie{totalCategories > 1 ? 's' : ''} au total
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                      disabled={currentPage === 1}
+                      className="px-4 py-2 text-sm font-medium text-neutral-700 bg-white border border-neutral-300 rounded-lg hover:bg-neutral-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      ← Précédent
+                    </button>
+
+                    {/* Page numbers */}
+                    <div className="hidden sm:flex items-center gap-1">
+                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                        let pageNum;
+                        if (totalPages <= 5) {
+                          pageNum = i + 1;
+                        } else if (currentPage <= 3) {
+                          pageNum = i + 1;
+                        } else if (currentPage >= totalPages - 2) {
+                          pageNum = totalPages - 4 + i;
+                        } else {
+                          pageNum = currentPage - 2 + i;
+                        }
+
+                        return (
+                          <button
+                            key={pageNum}
+                            onClick={() => setCurrentPage(pageNum)}
+                            className={`px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+                              currentPage === pageNum
+                                ? 'bg-amber-600 text-white'
+                                : 'text-neutral-700 bg-white border border-neutral-300 hover:bg-neutral-50'
+                            }`}
+                          >
+                            {pageNum}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    <button
+                      onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                      disabled={currentPage === totalPages}
+                      className="px-4 py-2 text-sm font-medium text-neutral-700 bg-white border border-neutral-300 rounded-lg hover:bg-neutral-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      Suivant →
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

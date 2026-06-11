@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import { logger } from '@/utils/logger';
+import { logger } from '../utils/logger';
 
 class DatabaseConfig {
   private readonly mongoUri: string;

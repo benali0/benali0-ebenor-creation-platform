@@ -1,9 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
-import { authService } from '@/services/authService';
-import { AdminUser } from '@/models/AdminUser';
-import { ApiError, ERROR_CODES } from '@/middleware/errorHandler';
-import { AuthenticatedRequest, ApiResponse } from '@/types';
-import { logger } from '@/utils/logger';
+import { authService } from '../services/authService';
+import { AdminUser } from '../models/AdminUser';
+import { ApiError, ERROR_CODES } from '../middleware/errorHandler';
+import { AuthenticatedRequest, ApiResponse } from '../types';
+import { logger } from '../utils/logger';
 
 export class AuthController {
   /**

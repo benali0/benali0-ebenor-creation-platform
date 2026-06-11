@@ -1,10 +1,10 @@
 import 'dotenv/config';
-import { config } from '@/config/database';
-import { mediaLibraryService } from '@/services/mediaLibraryService';
-import { Product } from '@/models/Product';
-import { GalleryImage } from '@/models/GalleryImage';
-import { HomeContent } from '@/models/HomeContent';
-import { logger } from '@/utils/logger';
+import { config } from '../config/database';
+import { mediaLibraryService } from '../services/mediaLibraryService';
+import { Product } from '../models/Product';
+import { GalleryImage } from '../models/GalleryImage';
+import { HomeContent } from '../models/HomeContent';
+import { logger } from '../utils/logger';
 
 async function run() {
   try {

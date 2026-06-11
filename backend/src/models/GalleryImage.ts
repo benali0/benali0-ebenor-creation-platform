@@ -1,5 +1,5 @@
 import mongoose, { Schema, Document } from 'mongoose';
-import { GalleryImage as IGalleryImage } from '@/types';
+import { GalleryImage as IGalleryImage } from '../types';
 
 export interface GalleryImageDocument extends IGalleryImage, Document {}
 

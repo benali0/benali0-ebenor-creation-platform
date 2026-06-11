@@ -1,11 +1,11 @@
 import { Router } from 'express';
-import { homeController } from '@/controllers/homeController';
-import { authenticate } from '@/middleware/auth';
+import { homeController } from '../../controllers/homeController';
+import { authenticate } from '../../middleware/auth';
 import { 
   validateHomeContent,
   body,
   handleValidationErrors
-} from '@/middleware/validation';
+} from '../../middleware/validation';
 
 const router = Router();
 

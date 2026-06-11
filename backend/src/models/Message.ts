@@ -1,5 +1,5 @@
 import mongoose, { Schema, Document } from 'mongoose';
-import { Message as IMessage } from '@/types';
+import { Message as IMessage } from '../types';
 
 export interface MessageDocument extends IMessage, Document {}
 

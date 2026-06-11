@@ -1,5 +1,5 @@
 import { cloudinaryService } from './cloudinaryService';
-import { logger } from '@/utils/logger';
+import { logger } from '../utils/logger';
 
 export interface VideoProcessingResult {
   publicId: string;

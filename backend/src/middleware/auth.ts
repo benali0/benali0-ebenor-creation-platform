@@ -1,8 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
-import { authService } from '@/services/authService';
-import { AdminUser } from '@/models/AdminUser';
+import { authService } from '../services/authService';
+import { AdminUser } from '../models/AdminUser';
 import { ApiError, ERROR_CODES } from './errorHandler';
-import { AuthenticatedRequest } from '@/types';
+import { AuthenticatedRequest } from '../types';
 
 /**
  * Middleware d'authentification JWT

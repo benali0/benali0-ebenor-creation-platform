@@ -1,8 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 import { body, query, param, validationResult } from 'express-validator';
 import { ApiError, ERROR_CODES } from './errorHandler';
-import { Product } from '@/models/Product';
-import { AdminUser } from '@/models/AdminUser';
+import { Product } from '../models/Product';
+import { AdminUser } from '../models/AdminUser';
+import { Category } from '../models/Category';
 
 // Export body for use in route files
 export { body, query, param };
@@ -147,8 +148,13 @@ export const validateProduct = [
   body('category')
     .notEmpty()
     .withMessage('La catégorie est requise')
-    .isIn(['cuisine', 'dressing', 'mobilier', 'amenagement', 'autre'])
-    .withMessage('Catégorie invalide'),
+    .custom(async (value) => {
+      const categoryExists = await Category.findOne({ slug: value });
+      if (!categoryExists) {
+        throw new Error('Catégorie invalide');
+      }
+      return true;
+    }),
   
   body('subcategory')
     .optional()
@@ -525,8 +531,15 @@ export const validatePagination = [
 export const validateProductFilters = [
   query('category')
     .optional()
-    .isIn(['cuisine', 'dressing', 'mobilier', 'amenagement', 'autre'])
-    .withMessage('Catégorie invalide'),
+    .custom(async (value) => {
+      if (value) {
+        const categoryExists = await Category.findOne({ slug: value });
+        if (!categoryExists) {
+          throw new Error('Catégorie invalide');
+        }
+      }
+      return true;
+    }),
   
   query('subcategory')
     .optional()
@@ -592,8 +605,13 @@ export const validateBulkOperation = [
     .if(body('operation').equals('changeCategory'))
     .notEmpty()
     .withMessage('La catégorie est requise pour cette opération')
-    .isIn(['cuisine', 'dressing', 'mobilier', 'amenagement', 'showroom', 'process', 'autre'])
-    .withMessage('Catégorie invalide'),
+    .custom(async (value) => {
+      const categoryExists = await Category.findOne({ slug: value });
+      if (!categoryExists) {
+        throw new Error('Catégorie invalide');
+      }
+      return true;
+    }),
   
   body('status')
     .if(body('operation').equals('changeStatus'))

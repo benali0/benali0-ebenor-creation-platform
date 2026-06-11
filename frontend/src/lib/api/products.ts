@@ -304,6 +304,7 @@ export function getAvailabilityColor(availability: string): string {
  * Get category label in French
  */
 export function getCategoryLabel(category: string): string {
+  if (!category) return '';
   const labels: Record<string, string> = {
     cuisine: 'Cuisine',
     dressing: 'Dressing',
@@ -311,7 +312,12 @@ export function getCategoryLabel(category: string): string {
     amenagement: 'Aménagement',
     autre: 'Autre',
   };
-  return labels[category] || category;
+  if (labels[category]) return labels[category];
+  
+  return category
+    .split('-')
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
 }
 
 /**

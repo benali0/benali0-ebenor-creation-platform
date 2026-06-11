@@ -1,6 +1,6 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import bcrypt from 'bcryptjs';
-import { AdminUser as IAdminUser } from '@/types';
+import { AdminUser as IAdminUser } from '../types';
 
 export interface AdminUserDocument extends IAdminUser, Document {
   comparePassword(candidatePassword: string): Promise<boolean>;

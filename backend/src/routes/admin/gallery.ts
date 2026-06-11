@@ -1,13 +1,13 @@
 import { Router } from 'express';
-import { galleryController } from '@/controllers/galleryController';
-import { authenticate } from '@/middleware/auth';
-import { uploadLimiter } from '@/middleware/security';
+import { galleryController } from '../../controllers/galleryController';
+import { authenticate } from '../../middleware/auth';
+import { uploadLimiter } from '../../middleware/security';
 import { 
   validateGalleryImage, 
   validateObjectIdParam,
   validateBulkOperation,
   validateSortOrder
-} from '@/middleware/validation';
+} from '../../middleware/validation';
 import multer from 'multer';
 
 const router = Router();

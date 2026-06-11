@@ -1,5 +1,5 @@
 import NodeCache from 'node-cache';
-import { logger } from '@/utils/logger';
+import { logger } from '../utils/logger';
 
 /**
  * Cache Service for optimizing database queries

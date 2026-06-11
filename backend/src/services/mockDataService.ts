@@ -1,4 +1,4 @@
-import { HomeContent, Product, GalleryImage, Message } from '@/types';
+import { HomeContent, Product, GalleryImage, Message } from '../types';
 
 /**
  * Service de données de test pour le développement sans MongoDB

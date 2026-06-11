@@ -54,8 +54,6 @@ const categorySchema = new Schema<ICategory>(
 );
 
 // Create indexes
-categorySchema.index({ name: 1 });
-categorySchema.index({ slug: 1 });
 categorySchema.index({ isActive: 1 });
 
 export const Category = mongoose.model<ICategory>('Category', categorySchema);
